@@ -25,7 +25,8 @@
     getFirestore,
     doc,
     setDoc,
-    getDoc
+    getDoc,
+	updateDoc
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
   // Firebase config
@@ -37,6 +38,12 @@
     messagingSenderId: "76734526218",
     appId: "1:76734526218:web:8a9eb4e0df4a58741980f3"
   };
+  
+  const userRef = doc(db, "users", auth.currentUser.uid);
+
+	await updateDoc(userRef, {
+	  loginAt: Date.now()
+	});
 
   // Init
   const app = initializeApp(firebaseConfig);
