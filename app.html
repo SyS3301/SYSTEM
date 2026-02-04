@@ -8,55 +8,63 @@
   <h1>Добро пожаловать</h1>
 
 <script type="module">
-  import { initializeApp } from
-    "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import {
-    getAuth,
-    onAuthStateChanged,
-    signOut
-  } from
-    "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-  import {
-    getFirestore,
-    doc,
-    getDoc
-  } from
-    "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-  const firebaseConfig = { /* тот же конфиг */ };
-  const SESSION_DURATION = 1 * 60 * 1000;
+// 🔹 Вставь сюда свой конфиг
+const firebaseConfig = {
+  apiKey: "AIzaSyD6GybNkPBa28UWm9rpPhkUe8Q4JYtqQm4",
+  authDomain: "system-85dfe.firebaseapp.com",
+  projectId: "system-85dfe",
+  storageBucket: "system-85dfe.firebasestorage.app",
+  messagingSenderId: "76734526218",
+  appId: "1:76734526218:web:8a9eb4e0df4a58741980f3"
+};
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+const SESSION_DURATION = 1 * 60 * 1000; // 1 минута
 
-  onAuthStateChanged(auth, async user => {
-    if (!user) {
-      redirect();
-      return;
-    }
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-    const snap = await getDoc(doc(db, "users", user.uid));
+function redirect() {
+  window.location.href = "index.html";
+}
 
-    if (!snap.exists()) {
-      await signOut(auth);
-      redirect();
-      return;
-    }
-
-    const { loginAt } = snap.data();
-
-    if (!loginAt || Date.now() - loginAt > SESSION_DURATION) {
-      await signOut(auth);
-      alert("Сессия истекла");
-      redirect();
-    }
-  });
-
-  function redirect() {
-    window.location.href = "index.html";
+// Проверяем при загрузке
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    redirect();
+    return;
   }
-</script>
 
+  checkSession(user); // сразу проверяем
+});
+
+// 🔹 Авто-проверка каждые 5 секунд
+setInterval(async () => {
+  const user = auth.currentUser;
+  if (user) {
+    await checkSession(user);
+  }
+}, 5000);
+
+async function checkSession(user) {
+  const snap = await getDoc(doc(db, "users", user.uid));
+  if (!snap.exists()) {
+    await signOut(auth);
+    redirect();
+    return;
+  }
+
+  const { loginAt } = snap.data() || {};
+  if (!loginAt || Date.now() - loginAt > SESSION_DURATION) {
+    await signOut(auth);
+    alert("Сессия истекла");
+    redirect();
+  }
+}
+</script>
 </body>
 </html>
