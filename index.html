@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Firebase Auth</title>
+</head>
+<body>
+
+<input id="email" placeholder="email">
+<input id="password" type="password" placeholder="password">
+<button id="register">Регистрация</button>
+<button id="login">Вход</button>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import {
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyD6GybNkPBa28UWm9rpPhkUe8Q4JYtqQm4",
+    authDomain: "system-85dfe.firebaseapp.com",
+    projectId: "system-85dfe",
+    storageBucket: "system-85dfe.firebasestorage.app",
+    messagingSenderId: "76734526218",
+    appId: "1:76734526218:web:8a9eb4e0df4a58741980f3"
+  };
+
+  // Init
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  // Elements
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+
+  // Registration
+  document.getElementById("register").onclick = async () => {
+    try {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+      await setDoc(doc(db, "users", cred.user.uid), {
+        email,
+        role: "user",
+        createdAt: Date.now()
+      });
+
+      alert("Успешно зарегистрирован");
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  // Login
+  document.getElementById("login").onclick = async () => {
+    try {
+      await signInWithEmailAndPassword(
+        auth,
+        emailInput.value.trim(),
+        passwordInput.value
+      );
+      alert("Вошёл");
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  // Auth state
+  onAuthStateChanged(auth, user => {
+    if (user) {
+      console.log("Авторизован:", user.email);
+    } else {
+      console.log("Не авторизован");
+    }
+  });
+</script>
+
+</body>
+</html>
