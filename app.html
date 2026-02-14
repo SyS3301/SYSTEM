@@ -2,23 +2,47 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>App</title>
+  <title>App Multilang</title>
   <style>
     body { font-family: sans-serif; background: #0f0f12; color: white; padding: 20px; }
+    #promo-container {
+      display: none;
+      background: linear-gradient(45deg, #4f46e5, #9333ea);
+      padding: 30px;
+      border-radius: 15px;
+      text-align: center;
+      position: relative;
+    }
+    /* Стили для переключателя языков */
+    .lang-switcher {
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+    .lang-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid white;
+      color: white;
+      padding: 5px 10px;
+      cursor: pointer;
+      border-radius: 5px;
+      text-transform: uppercase;
+    }
+    .lang-btn.active { background: white; color: #4f46e5; }
     #default-content { display: none; }
-    .debug-info { color: #555; font-size: 10px; margin-top: 50px; }
   </style>
 </head>
 <body>
 
-  <div id="promo-container">Загрузка спец-контента...</div>
-
-  <div id="default-content">
-    <h1>Стандартный интерфейс</h1>
-    <p>Добро пожаловать в обычный режим приложения.</p>
+  <div id="promo-container">
+    <div class="lang-switcher" id="lang-btns"></div>
+    <div id="promo-content"></div>
   </div>
 
-  <div class="debug-info" id="debug">Status: Инициализация...</div>
+  <div id="default-content">
+    <h1>Обычный контент</h1>
+  </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -38,56 +62,52 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const promoDiv = document.getElementById("promo-container");
-const mainDiv = document.getElementById("default-content");
-const debugDiv = document.getElementById("debug");
+let translations = {}; // Здесь будем хранить тексты из базы
 
 onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    debugDiv.innerText = "Status: Нет авторизации, редирект...";
-    window.location.href = "index.html";
-    return;
-  }
+  if (!user) { window.location.href = "index.html"; return; }
   
-  debugDiv.innerText = "Status: Авторизован как " + user.email + ". Проверка базы...";
-
   try {
-    const promoRef = doc(db, "promo", "NuetuWkhDrGfCX8a1UxL");
-    const snap = await getDoc(promoRef);
-
+    const snap = await getDoc(doc(db, "settings", "promo"));
     if (snap.exists()) {
       const data = snap.data();
       const now = Date.now();
-      // Важно: проверяем, что expiresAt существует и является Timestamp
-      const expiresAt = data.expiresAt?.toMillis ? data.expiresAt.toMillis() : 0;
+      const expiresAt = data.expiresAt?.toMillis() || 0;
 
-      console.log("Данные получены:", data);
-      debugDiv.innerText = `Status: Документ найден. Active: ${data.active}, Now: ${now}, Exp: ${expiresAt}`;
-
-      if (data.active === true && now < expiresAt) {
-        promoDiv.innerHTML = data.html || "<h1>Контент не задан в поле html</h1>";
-        promoDiv.style.display = "block";
-        mainDiv.style.display = "none";
+      if (data.active && now < expiresAt) {
+        translations = data.html; // Теперь это объект {ru: "...", en: "..."}
+        renderLangButtons();
+        switchLang(Object.keys(translations)[0]); // Показываем первый доступный язык
+        document.getElementById("promo-container").style.display = "block";
       } else {
-        debugDiv.innerText += " -> Условия не выполнены, показываю дефолт.";
-        showDefaultApp();
+        showDefault();
       }
-    } else {
-      debugDiv.innerText = "Status: Документ 'promo/NuetuWkhDrGfCX8a1UxL' НЕ НАЙДЕН в Firestore";
-      showDefaultApp();
-    }
-  } catch (err) {
-    console.error(err);
-    debugDiv.innerText = "Status: Ошибка Firestore: " + err.message;
-    // Если выскочит Alert, значит нужно поправить Rules в консоли Firebase
-    alert("Ошибка базы: " + err.message);
-    showDefaultApp();
-  }
+    } else { showDefault(); }
+  } catch (e) { showDefault(); }
 });
 
-function showDefaultApp() {
-  promoDiv.style.display = "none";
-  mainDiv.style.display = "block";
+function renderLangButtons() {
+  const container = document.getElementById("lang-btns");
+  container.innerHTML = "";
+  Object.keys(translations).forEach(lang => {
+    const btn = document.createElement("button");
+    btn.className = "lang-btn";
+    btn.innerText = lang;
+    btn.onclick = () => switchLang(lang);
+    container.appendChild(btn);
+  });
+}
+
+function switchLang(lang) {
+  document.getElementById("promo-content").innerHTML = translations[lang];
+  // Подсветка активной кнопки
+  document.querySelectorAll(".lang-btn").forEach(b => {
+    b.classList.toggle("active", b.innerText === lang);
+  });
+}
+
+function showDefault() {
+  document.getElementById("default-content").style.display = "block";
 }
 </script>
 </body>
