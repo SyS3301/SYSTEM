@@ -103,7 +103,7 @@ onAuthStateChanged(auth, async (user) => {
       const now = Date.now();
       const expiresAt = data.expiresAt?.toMillis() || 0;
 
-      debugDiv.innerText = `Status: Документ найден. Active: ${data.active}`;
+      debugDiv.innerText = `Status: Документ найден. Active: ${data.active}, Now: ${now}, Exp: ${expiresAt}`;
 
       if (data.active && now < expiresAt) {
         translations = data.html || {}; 
