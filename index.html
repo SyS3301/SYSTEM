@@ -83,18 +83,16 @@
     try {
       const email = emailInput.value.trim();
       const password = passwordInput.value;
-
       const cred = await createUserWithEmailAndPassword(auth, email, password);
 
       await setDoc(doc(db, "users", cred.user.uid), {
         email,
         role: "user",
-        createdAt: Date.now(),
-        loginAt: Date.now()
+        createdAt: serverTimestamp(), // Используем серверное время
+        loginAt: serverTimestamp()    // И здесь тоже
       });
 
-      alert("Успешно зарегистрирован");
-      window.location.href = "app.html"; // сразу на сайт
+      window.location.href = "app.html";
     } catch (e) {
       alert(e.message);
     }
