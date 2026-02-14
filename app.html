@@ -22,8 +22,7 @@ const firebaseConfig = {
   appId: "1:76734526218:web:8a9eb4e0df4a58741980f3"
 };
 
-const SESSION_DURATION = 1 * 60 * 1000; // 1 минута
-
+const SESSION_DURATION = 2 * 60 * 1000; // 2 минуты
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -34,55 +33,54 @@ function redirect() {
 
 let currentUser = null;
 
-onAuthStateChanged(auth, (user) => {
+// ЕДИНЫЙ обработчик состояния авторизации
+onAuthStateChanged(auth, async (user) => {
   if (user) {
     currentUser = user;
-    checkSession(); // Проверяем сразу при входе
+    console.log("Пользователь авторизован:", user.email);
+    await checkSession(); // Проверяем сессию только ПОСЛЕ того, как user получен
   } else {
     redirect();
   }
 });
 
-// Проверка сессии
 async function checkSession() {
-  if (!currentUser) return; // Защита, если юзер еще не загружен
+  if (!currentUser) return;
   
-  const userRef = doc(db, "users", currentUser.uid);
-  const snap = await getDoc(userRef);
+  try {
+    const userRef = doc(db, "users", currentUser.uid);
+    const snap = await getDoc(userRef);
+    const now = Date.now();
 
-  if (!snap.exists()) {
-    await setDoc(
-      userRef,
-      {
-        email: user.email ?? "",
+    if (!snap.exists()) {
+      // Если данных нет, создаем новую запись с текущим временем
+      await setDoc(userRef, {
+        email: currentUser.email || "",
         role: "user",
-        createdAt: Date.now(),
-        loginAt: Date.now()
-      },
-      { merge: true }
-    );
-    return;
-  }
+        createdAt: now,
+        loginAt: now
+      });
+      return;
+    }
 
-  const { loginAt } = snap.data() || {};
-  if (!loginAt) {
-    await setDoc(userRef, { loginAt: Date.now() }, { merge: true });
-    return;
-  }
-
-  if (Date.now() - loginAt > SESSION_DURATION) {
-    await signOut(auth);
-    alert("Сессия истекла");
-    redirect();
+    const { loginAt } = snap.data();
+    
+    // Если разница больше лимита — выкидываем
+    if (loginAt && (now - loginAt > SESSION_DURATION)) {
+      console.log("Время истекло. Разница в мс:", now - loginAt);
+      await signOut(auth);
+      alert("Сессия истекла");
+      redirect();
+    }
+  } catch (error) {
+    console.error("Ошибка проверки сессии:", error);
   }
 }
 
-// 🔹 При загрузке страницы
-onAuthStateChanged(auth, checkSession);
-
-// 🔹 Авто-проверка каждые 5 секунд
-setInterval(checkSession, 5000);
-
+// Проверка каждые 5 секунд
+setInterval(() => {
+  if (currentUser) checkSession();
+}, 5000);
 </script>
 </body>
 </html>
