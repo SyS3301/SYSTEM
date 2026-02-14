@@ -58,6 +58,7 @@
     setDoc,
     getDoc
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+  import { serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
   // Firebase config
   const firebaseConfig = {
@@ -107,7 +108,6 @@
       // Обновляем время входа (создаем запись при необходимости)
       const userRef = doc(db, "users", cred.user.uid);
       const userSnap = await getDoc(userRef);
-      import { serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 	  // В функции login/register:
   	  const baseData = {
