@@ -5,25 +5,55 @@
   <title>App Multilang</title>
   <style>
     body { font-family: sans-serif; background: #0f0f12; color: white; padding: 20px; }
-    /* Стили для переключателя языков */
+    
+    /* Основной контейнер для промо-поста */
+    #promo-container {
+      display: none;
+      background: linear-gradient(45deg, #1e1b4b, #312e81);
+      padding: 30px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
+      max-width: 600px;
+      margin: 20px auto;
+    }
+
+    /* Переключатель языков */
     .lang-switcher {
-      margin-bottom: 15px;
+      margin-bottom: 25px;
       display: flex;
       justify-content: center;
-      gap: 10px;
+      gap: 12px;
     }
+
     .lang-btn {
-      background: rgba(255,255,255,0.2);
-      border: 1px solid white;
-      color: white;
-      padding: 5px 10px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.7);
+      padding: 8px 16px;
       cursor: pointer;
-      border-radius: 5px;
+      border-radius: 8px;
       text-transform: uppercase;
+      font-weight: bold;
+      transition: all 0.3s ease;
     }
-    .lang-btn.active { background: white; color: #4f46e5; }
-    #default-content { display: none; }
-	.debug-info { color: #555; font-size: 10px; margin-top: 50px; }
+
+    /* Стиль активной кнопки */
+    .lang-btn.active {
+      background: white;
+      color: #4f46e5;
+      border-color: white;
+      box-shadow: 0 0 15px rgba(255,255,255,0.2);
+    }
+
+    #promo-content {
+      line-height: 1.6;
+      font-size: 1.1rem;
+    }
+
+    #default-content { display: none; text-align: center; margin-top: 50px; }
+    .debug-info { color: #555; font-size: 10px; margin-top: 50px; text-align: center; }
   </style>
 </head>
 <body>
@@ -34,13 +64,12 @@
   </div>
 
   <div id="default-content">
-    <center>
-	<h1>Обычный контент</h1>
-	</center>
+    <h1>Обычный контент</h1>
+    <p>Добро пожаловать в основное приложение.</p>
   </div>
-  
+
   <div class="debug-info" id="debug">Status: Инициализация...</div>
-  
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
@@ -60,54 +89,81 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const debugDiv = document.getElementById("debug");
 
-let translations = {}; // Здесь будем хранить тексты из базы
+let translations = {};
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) { window.location.href = "index.html"; return; }
   
   try {
+    // ВНИМАНИЕ: Проверьте путь! У вас в коде коллекция "promo" и ID "Nuetu..."
     const snap = await getDoc(doc(db, "promo", "NuetuWkhDrGfCX8a1UxL"));
+    
     if (snap.exists()) {
       const data = snap.data();
       const now = Date.now();
       const expiresAt = data.expiresAt?.toMillis() || 0;
 
-      console.log("Данные получены:", data);
-      debugDiv.innerText = `Status: Документ найден. Active: ${data.active}, Now: ${now}, Exp: ${expiresAt}`;
+      debugDiv.innerText = `Status: Документ найден. Active: ${data.active}`;
 
       if (data.active && now < expiresAt) {
-        translations = data.html; // Теперь это объект {ru: "...", en: "..."}
-        renderLangButtons();
-        switchLang(Object.keys(translations)[0]); // Показываем первый доступный язык
-        document.getElementById("promo-container").style.display = "block";
+        translations = data.html || {}; 
+        
+        const langKeys = Object.keys(translations);
+        if (langKeys.length > 0) {
+          renderLangButtons(langKeys);
+          // Выбираем случайный язык для старта
+          const randomLang = langKeys[Math.floor(Math.random() * langKeys.length)];
+          switchLang(randomLang);
+          
+          document.getElementById("promo-container").style.display = "block";
+        } else {
+          showDefault();
+        }
       } else {
         showDefault();
       }
-    } else { showDefault(); }
-  } catch (e) { showDefault(); }
+    } else {
+      debugDiv.innerText = "Status: Документ не найден в базе";
+      showDefault();
+    }
+  } catch (e) {
+    debugDiv.innerText = "Status: Ошибка: " + e.message;
+    showDefault();
+  }
 });
 
-function renderLangButtons() {
+function renderLangButtons(langKeys) {
   const container = document.getElementById("lang-btns");
   container.innerHTML = "";
-  Object.keys(translations).forEach(lang => {
+  
+  langKeys.forEach(lang => {
     const btn = document.createElement("button");
     btn.className = "lang-btn";
-    btn.innerText = lang;
+    btn.innerText = lang.toUpperCase();
+    btn.setAttribute("data-lang", lang); // Сохраняем оригинальный ключ
     btn.onclick = () => switchLang(lang);
     container.appendChild(btn);
   });
 }
 
 function switchLang(lang) {
-  document.getElementById("promo-content").innerHTML = translations[lang];
-  // Подсветка активной кнопки
-  document.querySelectorAll(".lang-btn").forEach(b => {
-    b.classList.toggle("active", b.innerText === lang);
-  });
+  const contentDiv = document.getElementById("promo-content");
+  if (translations[lang]) {
+    contentDiv.innerHTML = translations[lang];
+    
+    // Обновляем стили кнопок
+    document.querySelectorAll(".lang-btn").forEach(btn => {
+      if (btn.getAttribute("data-lang") === lang) {
+        btn.classList.add("active");
+      } else {
+        btn.classList.remove("active");
+      }
+    });
+  }
 }
 
 function showDefault() {
+  document.getElementById("promo-container").style.display = "none";
   document.getElementById("default-content").style.display = "block";
 }
 </script>
