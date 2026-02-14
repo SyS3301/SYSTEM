@@ -3,14 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <title>App</title>
+  <style>
+    body { font-family: sans-serif; background: #0f0f12; color: white; padding: 20px; }
+    /* Стили для временного блока (сторис) */
+    #promo-container {
+      display: none; /* Скрыт, пока скрипт не проверит базу */
+      background: linear-gradient(45deg, #4f46e5, #9333ea);
+      padding: 40px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    /* Стили для обычного контента */
+    #default-content {
+      display: none;
+    }
+  </style>
 </head>
 <body>
-  <h1>Добро пожаловать</h1>
-  <button id="logoutBtn">Выйти из системы</button>
+
+  <div id="promo-container"></div>
+
+  <div id="default-content">
+    <h1>Стандартный интерфейс</h1>
+    <p>Добро пожаловать в обычный режим приложения.</p>
+  </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD6GybNkPBa28UWm9rpPhkUe8Q4JYtqQm4",
@@ -23,19 +45,50 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
-// Простая проверка авторизации без лимита по времени
-onAuthStateChanged(auth, (user) => {
+const promoDiv = document.getElementById("promo-container");
+const mainDiv = document.getElementById("default-content");
+
+onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    window.location.href = "index.html";
-  } else {
-    console.log("Доступ разрешен для:", user.email);
+    window.location.href = "index.html"; //
+    return;
+  }
+  
+  // Как только пользователь подтвержден, проверяем наличие "сторис" в базе
+  try {
+    const promoRef = doc(db, "settings", "promo"); // Ссылка на документ
+    const snap = await getDoc(promoRef);
+
+    if (snap.exists()) {
+      const data = snap.data();
+      const now = Date.now();
+      // Превращаем метку времени Firebase в миллисекунды JS
+      const expiresAt = data.expiresAt?.toMillis() || 0;
+
+      // Если в базе стоит "active: true" и время еще не вышло
+      if (data.active === true && now < expiresAt) {
+        promoDiv.innerHTML = data.html; // Вставляем HTML из базы
+        promoDiv.style.display = "block";
+        mainDiv.style.display = "none";
+      } else {
+        // Если время вышло или неактивно — показываем обычный app
+        showDefaultApp();
+      }
+    } else {
+      showDefaultApp();
+    }
+  } catch (err) {
+    console.error("Ошибка загрузки:", err);
+    showDefaultApp();
   }
 });
 
-// Кнопка выхода (на всякий случай)
-document.getElementById("logoutBtn").onclick = () => signOut(auth);
-
+function showDefaultApp() {
+  promoDiv.style.display = "none";
+  mainDiv.style.display = "block";
+}
 </script>
 </body>
 </html>
