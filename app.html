@@ -32,9 +32,22 @@ function redirect() {
   window.location.href = "index.html";
 }
 
+let currentUser = null;
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    checkSession(); // Проверяем сразу при входе
+  } else {
+    redirect();
+  }
+});
+
 // Проверка сессии
 async function checkSession() {
-  const userRef = doc(db, "users", user.uid);
+  if (!currentUser) return; // Защита, если юзер еще не загружен
+  
+  const userRef = doc(db, "users", currentUser.uid);
   const snap = await getDoc(userRef);
 
   if (!snap.exists()) {
