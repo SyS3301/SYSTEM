@@ -60,7 +60,7 @@ onAuthStateChanged(auth, async (user) => {
   debugDiv.innerText = "Status: Авторизован как " + user.email + ". Проверка базы...";
 
   try {
-    const promoRef = doc(db, "settings", "promo");
+    const promoRef = doc(db, "promo", "NuetuWkhDrGfCX8a1UxL");
     const snap = await getDoc(promoRef);
 
     if (snap.exists()) {
@@ -81,7 +81,7 @@ onAuthStateChanged(auth, async (user) => {
         showDefaultApp();
       }
     } else {
-      debugDiv.innerText = "Status: Документ 'settings/promo' НЕ НАЙДЕН в Firestore";
+      debugDiv.innerText = "Status: Документ 'promo/NuetuWkhDrGfCX8a1UxL' НЕ НАЙДЕН в Firestore";
       showDefaultApp();
     }
   } catch (err) {
