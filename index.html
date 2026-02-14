@@ -115,7 +115,7 @@
 	  };
       const data = userSnap.exists()
         ? baseData
-        : { ...baseData, createdAt: Date.now() };
+        : { ...baseData, createdAt: serverTimestamp() };
       await setDoc(userRef, data, { merge: true });
 
       alert("Вошёл");

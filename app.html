@@ -5,7 +5,7 @@
   <title>App</title>
 </head>
 <body>
-  <h1>Добро пожаловать 3</h1>
+  <h1>Добро пожаловать 4</h1>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -49,30 +49,39 @@ async function checkSession() {
   
   try {
     const userRef = doc(db, "users", currentUser.uid);
+    // Добавляем { serverTimestamps: 'estimate' }, чтобы не получать null при первой загрузке
     const snap = await getDoc(userRef);
     
     if (snap.exists()) {
+      // snap.data() сам по себе не применяет настройки, берем данные аккуратно
       const data = snap.data();
       const now = Date.now();
       
-      // БЕЗОПАСНОЕ получение времени:
-      // Если это Firebase Timestamp, используем toMillis(), если число - берем как есть
+      // Используем специальный метод получения поля с оценкой времени
+      const loginAtTimestamp = snap.get("loginAt", { serverTimestamps: "estimate" });
+      
       let loginAtMs = 0;
-      if (data.loginAt && typeof data.loginAt.toMillis === 'function') {
-        loginAtMs = data.loginAt.toMillis();
-      } else if (typeof data.loginAt === 'number') {
-        loginAtMs = data.loginAt;
+      if (loginAtTimestamp && typeof loginAtTimestamp.toMillis === 'function') {
+        loginAtMs = loginAtTimestamp.toMillis();
+      } else if (typeof loginAtTimestamp === 'number') {
+        loginAtMs = loginAtTimestamp;
       }
 
-      if (loginAtMs === 0) return; // Ждем, пока данные загрузятся корректно
+      // Если времени всё еще нет (совсем пустая база), ничего не делаем
+      if (!loginAtMs) {
+        console.log("Время входа еще не определено");
+        return; 
+      }
 
       const diff = now - loginAtMs;
-      console.log("Прошло времени (сек):", Math.floor(diff / 1000));
+      const secondsPassed = Math.floor(diff / 1000);
+      console.log("Прошло времени (сек):", secondsPassed);
 
+      // Проверяем: если время в будущем (из-за разницы часов ПК и сервера), diff будет отрицательным
+      // Если diff > SESSION_DURATION — выкидываем
       if (diff > SESSION_DURATION) {
-        console.log("Сессия истекла, выходим...");
+        console.log("Сессия истекла");
         await signOut(auth);
-        // Редирект сработает автоматически через onAuthStateChanged
       }
     }
   } catch (error) {
