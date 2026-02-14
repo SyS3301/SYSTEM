@@ -68,6 +68,9 @@ onAuthStateChanged(auth, async (user) => {
       const now = Date.now();
       const expiresAt = data.expiresAt?.toMillis() || 0;
 
+      console.log("Данные получены:", data);
+      debugDiv.innerText = `Status: Документ найден. Active: ${data.active}, Now: ${now}, Exp: ${expiresAt}`;
+
       if (data.active && now < expiresAt) {
         translations = data.html; // Теперь это объект {ru: "...", en: "..."}
         renderLangButtons();
