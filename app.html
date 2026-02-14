@@ -5,29 +5,28 @@
   <title>App</title>
   <style>
     body { font-family: sans-serif; background: #0f0f12; color: white; padding: 20px; }
-    /* Стили для временного блока (сторис) */
     #promo-container {
-      display: none; /* Скрыт, пока скрипт не проверит базу */
+      display: none;
       background: linear-gradient(45deg, #4f46e5, #9333ea);
       padding: 40px;
       border-radius: 15px;
       text-align: center;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
-    /* Стили для обычного контента */
-    #default-content {
-      display: none;
-    }
+    #default-content { display: none; }
+    .debug-info { color: #555; font-size: 10px; margin-top: 50px; }
   </style>
 </head>
 <body>
 
-  <div id="promo-container"></div>
+  <div id="promo-container">Загрузка спец-контента...</div>
 
   <div id="default-content">
     <h1>Стандартный интерфейс</h1>
     <p>Добро пожаловать в обычный режим приложения.</p>
   </div>
+
+  <div class="debug-info" id="debug">Status: Инициализация...</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -49,38 +48,47 @@ const db = getFirestore(app);
 
 const promoDiv = document.getElementById("promo-container");
 const mainDiv = document.getElementById("default-content");
+const debugDiv = document.getElementById("debug");
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
-    window.location.href = "index.html"; //
+    debugDiv.innerText = "Status: Нет авторизации, редирект...";
+    window.location.href = "index.html";
     return;
   }
   
-  // Как только пользователь подтвержден, проверяем наличие "сторис" в базе
+  debugDiv.innerText = "Status: Авторизован как " + user.email + ". Проверка базы...";
+
   try {
-    const promoRef = doc(db, "settings", "promo"); // Ссылка на документ
+    const promoRef = doc(db, "settings", "promo");
     const snap = await getDoc(promoRef);
 
     if (snap.exists()) {
       const data = snap.data();
       const now = Date.now();
-      // Превращаем метку времени Firebase в миллисекунды JS
-      const expiresAt = data.expiresAt?.toMillis() || 0;
+      // Важно: проверяем, что expiresAt существует и является Timestamp
+      const expiresAt = data.expiresAt?.toMillis ? data.expiresAt.toMillis() : 0;
 
-      // Если в базе стоит "active: true" и время еще не вышло
+      console.log("Данные получены:", data);
+      debugDiv.innerText = `Status: Документ найден. Active: ${data.active}, Now: ${now}, Exp: ${expiresAt}`;
+
       if (data.active === true && now < expiresAt) {
-        promoDiv.innerHTML = data.html; // Вставляем HTML из базы
+        promoDiv.innerHTML = data.html || "<h1>Контент не задан в поле html</h1>";
         promoDiv.style.display = "block";
         mainDiv.style.display = "none";
       } else {
-        // Если время вышло или неактивно — показываем обычный app
+        debugDiv.innerText += " -> Условия не выполнены, показываю дефолт.";
         showDefaultApp();
       }
     } else {
+      debugDiv.innerText = "Status: Документ 'settings/promo' НЕ НАЙДЕН в Firestore";
       showDefaultApp();
     }
   } catch (err) {
-    console.error("Ошибка загрузки:", err);
+    console.error(err);
+    debugDiv.innerText = "Status: Ошибка Firestore: " + err.message;
+    // Если выскочит Alert, значит нужно поправить Rules в консоли Firebase
+    alert("Ошибка базы: " + err.message);
     showDefaultApp();
   }
 });
