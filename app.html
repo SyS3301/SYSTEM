@@ -5,7 +5,7 @@
   <title>App</title>
 </head>
 <body>
-  <h1>Добро пожаловать 1</h1>
+  <h1>Добро пожаловать 2</h1>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -52,28 +52,22 @@ async function checkSession() {
     const snap = await getDoc(userRef);
     const now = Date.now();
 
-    if (!snap.exists()) {
-      // Если данных нет, создаем новую запись с текущим временем
-      await setDoc(userRef, {
-        email: currentUser.email || "",
-        role: "user",
-        createdAt: now,
-        loginAt: now
-      });
-      return;
-    }
+    if (snap.exists()) {
+      const data = snap.data();
+      // Преобразуем Firebase Timestamp в JS Date
+      const loginAtMs = data.loginAt?.toMillis() || 0; 
+      
+      const diff = now - loginAtMs;
+      console.log("Прошло времени (сек):", diff / 1000);
 
-    const { loginAt } = snap.data();
-    
-    // Если разница больше лимита — выкидываем
-    if (loginAt && (now - loginAt > SESSION_DURATION)) {
-      console.log("Время истекло. Разница в мс:", now - loginAt);
-      await signOut(auth);
-      alert("Сессия истекла");
-      redirect();
+      if (diff > SESSION_DURATION) {
+        console.log("Сессия истекла");
+        await signOut(auth);
+        redirect();
+      }
     }
   } catch (error) {
-    console.error("Ошибка проверки сессии:", error);
+    console.error("Ошибка:", error);
   }
 }
 

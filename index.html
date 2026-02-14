@@ -107,11 +107,14 @@
       // Обновляем время входа (создаем запись при необходимости)
       const userRef = doc(db, "users", cred.user.uid);
       const userSnap = await getDoc(userRef);
-      const baseData = {
-        email: cred.user.email ?? emailInput.value.trim(),
-        role: "user",
-        loginAt: Date.now()
-      };
+      import { serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+	  // В функции login/register:
+  	  const baseData = {
+		email: cred.user.email ?? emailInput.value.trim(),
+		role: "user",
+		loginAt: serverTimestamp() // Используем серверное время
+	  };
       const data = userSnap.exists()
         ? baseData
         : { ...baseData, createdAt: Date.now() };
