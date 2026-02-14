@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
-  <title>Firebase Auth</title>
+  <title>Firebase Auth - Login Only</title>
   <style>
     body {
       margin: 0;
@@ -34,33 +34,32 @@
       background: #4f46e5;
       color: white;
     }
+    button:hover {
+      background: #4338ca;
+    }
   </style>
 </head>
 <body>
   <div class="auth-box">
+    <h2 style="text-align: center; margin-top: 0;">Вход</h2>
     <input id="email" placeholder="email">
     <input id="password" type="password" placeholder="password">
-    <button id="login">Вход</button>
-    <button id="register">Регистрация</button>
+    <button id="login">Войти</button>
   </div>
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import {
     getAuth,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    onAuthStateChanged
+    signInWithEmailAndPassword
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
    import {
     getFirestore,
     doc,
-    setDoc,
-    getDoc
+    setDoc
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
   import { serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-  // Firebase config
   const firebaseConfig = {
     apiKey: "AIzaSyD6GybNkPBa28UWm9rpPhkUe8Q4JYtqQm4",
     authDomain: "system-85dfe.firebaseapp.com",
@@ -70,7 +69,6 @@
     appId: "1:76734526218:web:8a9eb4e0df4a58741980f3"
   };
 
-  // Init Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
@@ -78,59 +76,27 @@
   const emailInput = document.getElementById("email");
   const passwordInput = document.getElementById("password");
 
-  // Регистрация
-  document.getElementById("register").onclick = async () => {
+  // Только Вход
+  document.getElementById("login").onclick = async () => {
     try {
       const email = emailInput.value.trim();
       const password = passwordInput.value;
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      
+      const cred = await signInWithEmailAndPassword(auth, email, password);
 
+      // Просто фиксируем время последнего входа без лишних проверок
       await setDoc(doc(db, "users", cred.user.uid), {
-        email,
-        role: "user",
-        createdAt: serverTimestamp(), // Используем серверное время
-        loginAt: serverTimestamp()    // И здесь тоже
-      });
+        email: email,
+        loginAt: serverTimestamp()
+      }, { merge: true });
 
       window.location.href = "app.html";
     } catch (e) {
-      alert(e.message);
+      alert("Ошибка входа: " + e.message);
     }
   };
 
-  // Вход
-  document.getElementById("login").onclick = async () => {
-    try {
-      const cred = await signInWithEmailAndPassword(auth, emailInput.value.trim(), passwordInput.value);
-
-      // Обновляем время входа (создаем запись при необходимости)
-      const userRef = doc(db, "users", cred.user.uid);
-      const userSnap = await getDoc(userRef);
-
-	  // В функции login/register:
-  	  const baseData = {
-		email: cred.user.email ?? emailInput.value.trim(),
-		role: "user",
-		loginAt: serverTimestamp() // Используем серверное время
-	  };
-      const data = userSnap.exists()
-        ? baseData
-        : { ...baseData, createdAt: serverTimestamp() };
-      await setDoc(userRef, data, { merge: true });
-
-      alert("Вошёл");
-      window.location.href = "app.html"; // редирект на сайт
-    } catch (e) {
-      alert(e.message);
-    }
-  };
-
-  // Если уже авторизован — редирект
-  onAuthStateChanged(auth, user => {
-    if (user) {
-      window.location.href = "app.html";
-    }
-  });
+  // Авто-редирект удален, чтобы пользователь всегда видел форму входа при заходе на index.html
 </script>
 </body>
 </html>

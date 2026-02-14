@@ -5,14 +5,13 @@
   <title>App</title>
 </head>
 <body>
-  <h1>Добро пожаловать 4</h1>
+  <h1>Добро пожаловать</h1>
+  <button id="logoutBtn">Выйти из системы</button>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// 🔹 Вставь сюда свой конфиг
 const firebaseConfig = {
   apiKey: "AIzaSyD6GybNkPBa28UWm9rpPhkUe8Q4JYtqQm4",
   authDomain: "system-85dfe.firebaseapp.com",
@@ -22,77 +21,21 @@ const firebaseConfig = {
   appId: "1:76734526218:web:8a9eb4e0df4a58741980f3"
 };
 
-const SESSION_DURATION = 2 * 60 * 1000; // 2 минуты
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
 
-function redirect() {
-  window.location.href = "index.html";
-}
-
-let currentUser = null;
-
-// ЕДИНЫЙ обработчик состояния авторизации
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    currentUser = user;
-    console.log("Пользователь авторизован:", user.email);
-    await checkSession(); // Проверяем сессию только ПОСЛЕ того, как user получен
+// Простая проверка авторизации без лимита по времени
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    window.location.href = "index.html";
   } else {
-    redirect();
+    console.log("Доступ разрешен для:", user.email);
   }
 });
 
-async function checkSession() {
-  if (!currentUser) return;
-  
-  try {
-    const userRef = doc(db, "users", currentUser.uid);
-    // Добавляем { serverTimestamps: 'estimate' }, чтобы не получать null при первой загрузке
-    const snap = await getDoc(userRef);
-    
-    if (snap.exists()) {
-      // snap.data() сам по себе не применяет настройки, берем данные аккуратно
-      const data = snap.data();
-      const now = Date.now();
-      
-      // Используем специальный метод получения поля с оценкой времени
-      const loginAtTimestamp = snap.get("loginAt", { serverTimestamps: "estimate" });
-      
-      let loginAtMs = 0;
-      if (loginAtTimestamp && typeof loginAtTimestamp.toMillis === 'function') {
-        loginAtMs = loginAtTimestamp.toMillis();
-      } else if (typeof loginAtTimestamp === 'number') {
-        loginAtMs = loginAtTimestamp;
-      }
+// Кнопка выхода (на всякий случай)
+document.getElementById("logoutBtn").onclick = () => signOut(auth);
 
-      // Если времени всё еще нет (совсем пустая база), ничего не делаем
-      if (!loginAtMs) {
-        console.log("Время входа еще не определено");
-        return; 
-      }
-
-      const diff = now - loginAtMs;
-      const secondsPassed = Math.floor(diff / 1000);
-      console.log("Прошло времени (сек):", secondsPassed);
-
-      // Проверяем: если время в будущем (из-за разницы часов ПК и сервера), diff будет отрицательным
-      // Если diff > SESSION_DURATION — выкидываем
-      if (diff > SESSION_DURATION) {
-        console.log("Сессия истекла");
-        await signOut(auth);
-      }
-    }
-  } catch (error) {
-    console.error("Ошибка при проверке сессии:", error);
-  }
-}
-
-// Проверка каждые 5 секунд
-setInterval(() => {
-  if (currentUser) checkSession();
-}, 5000);
 </script>
 </body>
 </html>
