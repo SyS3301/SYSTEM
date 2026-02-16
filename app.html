@@ -54,6 +54,11 @@
 
     #default-content { display: none; text-align: center; margin-top: 50px; }
     .debug-info { color: #555; font-size: 10px; margin-top: 50px; text-align: center; }
+	
+	/* Скрываем всё до проверки прав */
+	#promo-container, #default-content {
+	  display: none;
+	}
   </style>
 </head>
 <body>
@@ -92,10 +97,17 @@ const debugDiv = document.getElementById("debug");
 let translations = {};
 
 onAuthStateChanged(auth, async (user) => {
-  if (!user) { window.location.href = "index.html"; return; }
+  // 1. Если пользователя нет — немедленный вылет на логин
+  if (!user) { 
+    console.log("Доступ запрещен: Пользователь не авторизован");
+    window.location.replace("index.html"); // replace лучше, чтобы нельзя было нажать "Назад"
+    return; 
+  }
   
+  // Если мы здесь — пользователь вошел.
+  debugDiv.innerText = "Авторизация успешна. Загрузка данных...";
+
   try {
-    // ВНИМАНИЕ: Проверьте путь! У вас в коде коллекция "promo" и ID "Nuetu..."
     const snap = await getDoc(doc(db, "promo", "NuetuWkhDrGfCX8a1UxL"));
     
     if (snap.exists()) {
@@ -103,18 +115,16 @@ onAuthStateChanged(auth, async (user) => {
       const now = Date.now();
       const expiresAt = data.expiresAt?.toMillis() || 0;
 
-      debugDiv.innerText = `Status: Документ найден. Active: ${data.active}, Now: ${now}, Exp: ${expiresAt}`;
-
       if (data.active && now < expiresAt) {
         translations = data.html || {}; 
-        
         const langKeys = Object.keys(translations);
+        
         if (langKeys.length > 0) {
           renderLangButtons(langKeys);
-          // Выбираем случайный язык для старта
           const randomLang = langKeys[Math.floor(Math.random() * langKeys.length)];
           switchLang(randomLang);
           
+          // Показываем контент ТОЛЬКО ТУТ
           document.getElementById("promo-container").style.display = "block";
         } else {
           showDefault();
@@ -123,14 +133,19 @@ onAuthStateChanged(auth, async (user) => {
         showDefault();
       }
     } else {
-      debugDiv.innerText = "Status: Документ не найден в базе";
       showDefault();
     }
   } catch (e) {
-    debugDiv.innerText = "Status: Ошибка: " + e.message;
+    console.error(e);
     showDefault();
   }
 });
+
+// Обновите функцию showDefault, чтобы она явно включала видимость
+function showDefault() {
+  document.getElementById("promo-container").style.display = "none";
+  document.getElementById("default-content").style.display = "block";
+}
 
 function renderLangButtons(langKeys) {
   const container = document.getElementById("lang-btns");
