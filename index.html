@@ -97,7 +97,7 @@
 
   // Только Вход
   document.getElementById("login").onclick = async () => {
-    try {␊
+    try {
       const email = normalizeEmail(emailInput.value);
       const password = passwordInput.value;
       
@@ -114,8 +114,6 @@
       alert("Ошибка входа: " + e.message);
     }
   };
-
-  // Авто-редирект удален, чтобы пользователь всегда видел форму входа при заходе на index.html
 </script>
 </body>
 </html>
