@@ -37,12 +37,17 @@
     button:hover {
       background: #4338ca;
     }
+    .email-hint {
+      margin: -4px 0 4px;
+      font-size: 12px;
+      color: #a1a1aa;
+    }
   </style>
 </head>
 <body>
   <div class="auth-box">
     <h2 style="text-align: center; margin-top: 0;">Вход</h2>
-    <input id="email" placeholder="email">
+    <input id="email" placeholder="username">
     <input id="password" type="password" placeholder="password">
     <button id="login">Войти</button>
   </div>
@@ -75,11 +80,25 @@
 
   const emailInput = document.getElementById("email");
   const passwordInput = document.getElementById("password");
+  const DEFAULT_EMAIL_SUFFIX = "@222.com";
+
+  function normalizeEmail(rawValue) {
+    const value = rawValue.trim();
+    if (!value) return "";
+    return value.includes("@") ? value : `${value}${DEFAULT_EMAIL_SUFFIX}`;
+  }
+
+  emailInput.addEventListener("blur", () => {
+    const normalized = normalizeEmail(emailInput.value);
+    if (normalized) {
+      emailInput.value = normalized;
+    }
+  });
 
   // Только Вход
   document.getElementById("login").onclick = async () => {
-    try {
-      const email = emailInput.value.trim();
+    try {␊
+      const email = normalizeEmail(emailInput.value);
       const password = passwordInput.value;
       
       const cred = await signInWithEmailAndPassword(auth, email, password);
