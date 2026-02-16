@@ -6,26 +6,20 @@
   <style>
     body { font-family: sans-serif; background: #0f0f12; color: white; padding: 20px; }
     
-    <!-- /* Основной контейнер для промо-поста */ -->
-    <!-- #promo-container { -->
-      <!-- display: none; -->
-      <!-- background: linear-gradient(45deg, #1e1b4b, #312e81); -->
-      <!-- padding: 30px; -->
-      <!-- border-radius: 16px; -->
-      <!-- text-align: center; -->
-      <!-- box-shadow: 0 15px 35px rgba(0,0,0,0.4); -->
-      <!-- border: 1px solid rgba(255,255,255,0.1); -->
-      <!-- max-width: 600px; -->
-      <!-- margin: 20px auto; -->
-    <!-- } -->
-
-    /* Переключатель языков */
-    .lang-switcher {
-      margin-bottom: 25px;
-      display: flex;
-      justify-content: center;
-      gap: 12px;
+    /* Исправленный блок стилей контейнера */
+    #promo-container {
+      display: none; /* Скрыто до проверки */
+      background: linear-gradient(45deg, #1e1b4b, #312e81);
+      padding: 30px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.1);
+      max-width: 600px;
+      margin: 20px auto;
     }
+
+    .lang-switcher { margin-bottom: 25px; display: flex; justify-content: center; gap: 12px; }
 
     .lang-btn {
       background: rgba(255,255,255,0.1);
@@ -39,7 +33,6 @@
       transition: all 0.3s ease;
     }
 
-    /* Стиль активной кнопки */
     .lang-btn.active {
       background: white;
       color: #4f46e5;
@@ -47,18 +40,9 @@
       box-shadow: 0 0 15px rgba(255,255,255,0.2);
     }
 
-    #promo-content {
-      line-height: 1.6;
-      font-size: 1.1rem;
-    }
-
+    #promo-content { line-height: 1.6; font-size: 1.1rem; }
     #default-content { display: none; text-align: center; margin-top: 50px; }
     .debug-info { color: #555; font-size: 10px; margin-top: 50px; text-align: center; }
-	
-	/* Скрываем всё до проверки прав */
-	#promo-container, #default-content {
-	  display: none;
-	}
   </style>
 </head>
 <body>
@@ -97,15 +81,13 @@ const debugDiv = document.getElementById("debug");
 let translations = {};
 
 onAuthStateChanged(auth, async (user) => {
-  // 1. Если пользователя нет — немедленный вылет на логин
   if (!user) { 
-    console.log("Доступ запрещен: Пользователь не авторизован");
-    window.location.replace("index.html"); // replace лучше, чтобы нельзя было нажать "Назад"
+    debugDiv.innerText = "Status: Перенаправление...";
+    window.location.replace("index.html"); 
     return; 
   }
   
-  // Если мы здесь — пользователь вошел.
-  debugDiv.innerText = "Авторизация успешна. Загрузка данных...";
+  debugDiv.innerText = "Status: Авторизован, загрузка данных...";
 
   try {
     const snap = await getDoc(doc(db, "promo", "NuetuWkhDrGfCX8a1UxL"));
@@ -121,11 +103,9 @@ onAuthStateChanged(auth, async (user) => {
         
         if (langKeys.length > 0) {
           renderLangButtons(langKeys);
-          const randomLang = langKeys[Math.floor(Math.random() * langKeys.length)];
-          switchLang(randomLang);
-          
-          // Показываем контент ТОЛЬКО ТУТ
+          switchLang(langKeys[0]); // Берем первый доступный язык
           document.getElementById("promo-container").style.display = "block";
+          debugDiv.innerText = "Status: Промо активно";
         } else {
           showDefault();
         }
@@ -133,30 +113,25 @@ onAuthStateChanged(auth, async (user) => {
         showDefault();
       }
     } else {
+      debugDiv.innerText = "Status: Документ не найден, показ стандартного контента";
       showDefault();
     }
   } catch (e) {
     console.error(e);
+    debugDiv.innerText = "Status: Ошибка базы данных";
     showDefault();
   }
 });
 
-// Обновите функцию showDefault, чтобы она явно включала видимость
-function showDefault() {
-  document.getElementById("promo-container").style.display = "none";
-  document.getElementById("default-content").style.display = "block";
-}
-
 function renderLangButtons(langKeys) {
   const container = document.getElementById("lang-btns");
   container.innerHTML = "";
-  
   langKeys.forEach(lang => {
     const btn = document.createElement("button");
     btn.className = "lang-btn";
     btn.innerText = lang.toUpperCase();
-    btn.setAttribute("data-lang", lang); // Сохраняем оригинальный ключ
     btn.onclick = () => switchLang(lang);
+    btn.setAttribute("data-lang", lang);
     container.appendChild(btn);
   });
 }
@@ -165,14 +140,8 @@ function switchLang(lang) {
   const contentDiv = document.getElementById("promo-content");
   if (translations[lang]) {
     contentDiv.innerHTML = translations[lang];
-    
-    // Обновляем стили кнопок
     document.querySelectorAll(".lang-btn").forEach(btn => {
-      if (btn.getAttribute("data-lang") === lang) {
-        btn.classList.add("active");
-      } else {
-        btn.classList.remove("active");
-      }
+      btn.classList.toggle("active", btn.getAttribute("data-lang") === lang);
     });
   }
 }
@@ -180,6 +149,7 @@ function switchLang(lang) {
 function showDefault() {
   document.getElementById("promo-container").style.display = "none";
   document.getElementById("default-content").style.display = "block";
+  debugDiv.innerText = "Status: Стандартный контент";
 }
 </script>
 </body>
