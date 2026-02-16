@@ -37,11 +37,6 @@
     button:hover {
       background: #4338ca;
     }
-    .email-hint {
-      margin: -4px 0 4px;
-      font-size: 12px;
-      color: #a1a1aa;
-    }
   </style>
 </head>
 <body>
@@ -56,16 +51,16 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
   import {
     getAuth,
-    signInWithEmailAndPassword
-	setPersistence, 
+    signInWithEmailAndPassword,
+    setPersistence, 
     browserSessionPersistence
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-   import {
+  import {
     getFirestore,
     doc,
-    setDoc
+    setDoc,
+    serverTimestamp
   } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-  import { serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyD6GybNkPBa28UWm9rpPhkUe8Q4JYtqQm4",
@@ -90,26 +85,33 @@
     return value.includes("@") ? value : `${value}${DEFAULT_EMAIL_SUFFIX}`;
   }
 
-  emailInput.addEventListener("blur", () => {
-    const normalized = normalizeEmail(emailInput.value);
-    if (normalized) {
-      emailInput.value = normalized;
-    }
-  });
-
-  // Только Вход
+  // При нажатии на кнопку входа
   document.getElementById("login").onclick = async () => {
     try {
       const email = normalizeEmail(emailInput.value);
       const password = passwordInput.value;
 
-      // Устанавливаем тип сессии: "Только пока открыта вкладка"
+      if (!email || !password) {
+        alert("Введите логин и пароль");
+        return;
+      }
+
+      // 1. Устанавливаем режим сессии "до закрытия вкладки"
       await setPersistence(auth, browserSessionPersistence);
-    
+      
+      // 2. Выполняем вход
       const cred = await signInWithEmailAndPassword(auth, email, password);
 
+      // 3. (Опционально) Фиксируем время входа в Firestore
+      await setDoc(doc(db, "users", cred.user.uid), {
+        email: email,
+        loginAt: serverTimestamp()
+      }, { merge: true });
+
+      // 4. Перенаправляем в приложение
       window.location.href = "app.html";
     } catch (e) {
+      console.error(e);
       alert("Ошибка входа: " + e.message);
     }
   };
